@@ -9,6 +9,8 @@ Run:  streamlit run src/vantage/app.py
 
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -194,21 +196,50 @@ def render_result(result) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Cloud helpers
+# --------------------------------------------------------------------------- #
+def _bridge_streamlit_secrets() -> None:
+    """Expose Streamlit Cloud dashboard secrets as env vars so pydantic-settings
+    (which reads env/.env) picks them up. No-op locally when no secrets exist."""
+    try:
+        for key, value in st.secrets.items():
+            os.environ.setdefault(key, str(value))
+    except Exception:  # noqa: BLE001 - st.secrets raises when nothing is configured
+        pass
+
+
+def _ensure_database(settings) -> None:
+    """Generate the SQLite DB on first run if missing (e.g. a fresh cloud deploy
+    where the .db is git-ignored)."""
+    if not settings.database_url.startswith("sqlite"):
+        return
+    db_path = settings.database_url.replace("sqlite:///", "")
+    if Path(db_path).exists():
+        return
+    scale = os.environ.get("AUTO_SEED_SCALE", "small")
+    generator = Path(__file__).resolve().parents[2] / "seed" / "generate_data.py"
+    with st.spinner(f"First run — generating the sample database ({scale})… this takes a few seconds."):
+        subprocess.run([sys.executable, str(generator), "--scale", scale, "--out", db_path], check=True)
+
+
+# --------------------------------------------------------------------------- #
 # App
 # --------------------------------------------------------------------------- #
 def main() -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
+    _bridge_streamlit_secrets()
 
     try:
         settings = get_settings()
     except Exception as exc:  # noqa: BLE001
         st.error(f"Configuration error: {exc}")
-        st.info("Copy `.env.example` to `.env`, add your API key, then restart.")
+        st.info("On Streamlit Cloud, add GROQ_API_KEY in the app's Secrets. Locally, copy .env.example to .env.")
         st.stop()
 
-    db_path = settings.database_url.replace("sqlite:///", "")
-    if settings.database_url.startswith("sqlite") and not Path(db_path).exists():
-        st.error("Database not found. Generate it first:")
+    try:
+        _ensure_database(settings)
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"Could not prepare the database: {exc}")
         st.code("python seed/generate_data.py --scale rich", language="bash")
         st.stop()
 
