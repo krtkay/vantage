@@ -1,5 +1,11 @@
 # 📊 Vantage — Commercial Analytics Agent
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://vantage-7winnxdqsqfhooaknvjj2t.streamlit.app/)
+&nbsp;![CI](https://github.com/krtkay/vantage/actions/workflows/ci.yml/badge.svg)
+&nbsp;![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+
+**▶️ Try it live:** **https://vantage-7winnxdqsqfhooaknvjj2t.streamlit.app/**
+
 A production-shaped **AI agent** that lets a non-technical sales manager ask
 questions in plain English and get back a **chart + a grounded, business-ready
 insight** — by writing safe SQL, running it, and explaining the result.
