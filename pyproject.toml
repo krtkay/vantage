@@ -1,0 +1,21 @@
+[project]
+name = "vantage"
+version = "0.1.0"
+description = "Commercial-analytics AI agent: natural-language questions -> safe SQL -> charts + grounded insights."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["data"]
+
+[tool.ruff.lint]
+# Pyflakes (F), pycodestyle (E/W), bugbear (B), pyupgrade (UP).
+# isort (I) is intentionally omitted to avoid friction with sys.path-hack modules.
+select = ["E", "F", "W", "B", "UP"]
+ignore = ["E402", "E501", "B008"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "seed", "eval"]
+testpaths = ["tests"]
+addopts = "-q"

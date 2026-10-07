@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Generated data (regenerate with: python seed/generate_data.py --scale rich)
+data/*.db
+data/*.sqlite
+
+# Eval output
+eval/reports/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

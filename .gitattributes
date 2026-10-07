@@ -1,0 +1,9 @@
+# Normalise line endings: LF in the repo, so CI (Linux) stays consistent.
+* text=auto eol=lf
+
+# Windows launch scripts keep CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary / data
+*.db binary

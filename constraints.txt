@@ -1,0 +1,12 @@
+# Pins your pre-installed versions so `pip install` of new packages can NEVER
+# upgrade/downgrade them. Used via:  pip install -c constraints.txt <pkg>
+streamlit==1.36.0
+pandas==2.2.2
+numpy==1.26.4
+plotly==5.24.1
+pydantic==2.10.3
+pydantic_core==2.27.1
+python-dotenv==1.0.1
+Faker==33.1.0
+tenacity==8.4.2
+google-generativeai==0.8.3

@@ -1,0 +1,125 @@
+# Human-authored meaning layer for the synthetic warehouse. The agent reads this
+# alongside the introspected schema. Optional: a foreign DB works without it.
+tables:
+  dim_date:
+    description: Monthly calendar. One row per month.
+    grain: one row per month
+    columns:
+      date_id: Surrogate key (1 = oldest month). Join target for all fact tables.
+      month_start: First day of the month (ISO date string).
+      year: Calendar year.
+      quarter: Calendar quarter 1-4.
+      quarter_label: e.g. "2025-Q3" - convenient for grouping/labels.
+      month: Month number 1-12.
+      month_name: Full month name.
+      fiscal_year: Equals calendar year in this dataset.
+
+  dim_region:
+    description: Sales regions grouped into zones.
+    columns:
+      region_id: Primary key.
+      region_name: Region name (e.g. North-1).
+      zone: North / South / East / West.
+      country: Always "India".
+
+  dim_territory:
+    description: Sales territories; each belongs to a region.
+    columns:
+      territory_id: Primary key.
+      territory_name: Human label (prefixed T-###).
+      region_id: FK -> dim_region.region_id.
+      size_tier: Large / Medium / Small (structural size).
+
+  dim_rep:
+    description: Sales representatives.
+    columns:
+      rep_id: Primary key.
+      rep_name: Rep full name.
+      territory_id: FK -> dim_territory.territory_id (rep's home territory).
+      manager_id: FK -> dim_rep.rep_id (NULL for managers themselves).
+      hire_date: ISO hire date.
+      tenure_months: Months of tenure as of Dec 2025.
+      seniority: Junior / Mid / Senior (derived from tenure).
+      performance_tier: Top / Mid / Low (Top reps sell more and are more active).
+
+  dim_product:
+    description: Product catalogue (MedTech / consumer health).
+    columns:
+      product_id: Primary key.
+      product_name: SKU-style label.
+      category: One of Diagnostics, Monitoring Devices, Surgical Instruments, Consumer Wellness, Orthopedic.
+      subcategory: Finer product grouping.
+      list_price: Catalogue unit price.
+      unit_cost: Cost per unit (= list_price * (1 - margin_pct)).
+      margin_pct: Gross margin fraction.
+      launch_date: Market launch date (recent for "Launch" lifecycle products).
+      lifecycle_stage: Launch / Growth / Mature / Decline.
+
+  dim_account:
+    description: Customers the reps sell to (hospitals, clinics, pharmacies, distributors).
+    columns:
+      account_id: Primary key.
+      account_name: Account name.
+      account_type: Hospital / Clinic / Retail Pharmacy / Distributor.
+      tier: A / B / C - A accounts buy the most, C the least.
+      territory_id: FK -> dim_territory.territory_id.
+      primary_rep_id: FK -> dim_rep.rep_id (account owner).
+      city: City.
+
+  fact_sales:
+    description: Sales transactions (the main fact table).
+    grain: one row per month x account x product x rep
+    columns:
+      sale_id: Primary key.
+      date_id: FK -> dim_date.date_id.
+      rep_id: FK -> dim_rep.rep_id.
+      product_id: FK -> dim_product.product_id.
+      account_id: FK -> dim_account.account_id.
+      territory_id: FK -> dim_territory.territory_id.
+      units: Units sold (negative for returns).
+      gross_revenue: units * list_price.
+      discount_pct: Discount fraction applied.
+      discount_amount: gross_revenue * discount_pct.
+      net_revenue: gross_revenue - discount_amount. USE THIS for "revenue/sales".
+      cogs: Cost of goods sold.
+      margin: net_revenue - cogs (profit).
+
+  fact_targets:
+    description: Monthly sales quota per rep.
+    grain: one row per month x rep
+    columns:
+      target_id: Primary key.
+      date_id: FK -> dim_date.date_id.
+      rep_id: FK -> dim_rep.rep_id.
+      territory_id: FK -> dim_territory.territory_id.
+      target_revenue: Revenue quota for that rep-month.
+      target_units: Unit quota for that rep-month.
+
+  fact_activity:
+    description: Rep field activities (calls, visits, demos).
+    grain: one row per activity
+    columns:
+      activity_id: Primary key.
+      date_id: FK -> dim_date.date_id.
+      rep_id: FK -> dim_rep.rep_id.
+      account_id: FK -> dim_account.account_id.
+      activity_type: Visit / Call / Email / Demo / Conference.
+      activity_date: ISO date of the activity.
+      duration_min: Duration in minutes.
+      outcome: Positive / Follow-up / Neutral / No-interest.
+
+relationships:
+  - All fact tables join to dim_date on date_id.
+  - fact_sales joins dim_rep, dim_product, dim_account, dim_territory on their *_id keys.
+  - fact_targets joins dim_rep on rep_id and dim_date on date_id.
+  - fact_activity joins dim_rep on rep_id, dim_account on account_id, dim_date on date_id.
+  - Attainment is actual net_revenue divided by target_revenue for a rep (or territory) over a period.
+
+notes:
+  - Use net_revenue for revenue unless gross or margin is explicitly requested.
+  - CRITICAL - avoid fan-out joins. fact_sales has many rows per rep-month while
+    fact_targets has one. Joining them directly multiplies the target across every
+    sales row and inflates SUM(target_revenue). Aggregate each table to the needed
+    grain in separate CTEs/subqueries first, then join.
+  - Returns appear as negative units/revenue; they are part of net figures.
+  - For "this year"/"latest" use the most recent year present in dim_date (data ends Dec 2025).

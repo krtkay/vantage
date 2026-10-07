@@ -1,0 +1,14 @@
+# Base theme (CSS in app.py layers the polish on top of this).
+[theme]
+base = "dark"
+primaryColor = "#7C8CF8"
+backgroundColor = "#0B0F19"
+secondaryBackgroundColor = "#151A28"
+textColor = "#E8ECF4"
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
